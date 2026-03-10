@@ -1,0 +1,229 @@
+"""
+app.py — AskDeva: Qwen3-VL ChatGPT-style UI
+Run: python -m streamlit run app.py
+"""
+
+import streamlit as st
+from PIL import Image
+from model import (
+    MODEL, API_KEY, pil_to_base64_url,
+    text_message, image_message, chat_stream,
+)
+
+st.set_page_config(
+    page_title="AskDeva AI",
+    page_icon="✨",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── ENHANCED BRANDING & UI ──────────────────────────────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap');
+
+/* Base Theme */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif !important;
+    background-color: #0D0D0D !important;
+    color: #E5E5E5 !important;
+}
+
+/* Hide Streamlit elements */
+#MainMenu, footer, header { visibility: hidden; }
+[data-testid="stToolbar"] { display: none; }
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background-color: #121212 !important;
+    border-right: 1px solid #222 !important;
+    width: 280px !important;
+}
+
+/* Chat Container */
+.chat-area {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 20px 160px;
+}
+
+/* Message Rows */
+.msg-row {
+    display: flex;
+    margin-bottom: 32px;
+    gap: 18px;
+    animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+
+/* Avatars */
+.av-wrap {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; flex-shrink: 0;
+    font-size: 0.9rem;
+}
+.av-bot { 
+    background: linear-gradient(135deg, #00F2FE, #4FACFE); 
+    color: #000; 
+    box-shadow: 0 0 15px rgba(79, 172, 254, 0.4);
+}
+.av-user { background: #333; color: #fff; }
+
+/* Message Content */
+.msg-content { line-height: 1.7; font-size: 1rem; }
+.user-content {
+    background: #1E1E1E;
+    padding: 14px 20px;
+    border-radius: 20px 20px 4px 20px;
+    max-width: 85%;
+    margin-left: auto;
+    border: 1px solid #2A2A2A;
+}
+.bot-content { color: #D1D1D1; width: 100%; }
+
+/* Input Bar Styling */
+[data-testid="stChatInput"] {
+    background-color: #1A1A1A !important;
+    border: 1px solid #333 !important;
+    border-radius: 14px !important;
+}
+
+/* Custom Suggestion Cards */
+.suggestion-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; width: 100%; margin-top: 2.5rem;
+}
+.sug-card {
+    border: 1px solid #222;
+    padding: 18px; border-radius: 14px;
+    background: #141414;
+    transition: 0.3s;
+    text-align: left;
+}
+.sug-card:hover { 
+    background: #1A1A1A; 
+    border-color: #4FACFE;
+    transform: translateY(-2px);
+}
+
+/* Code Blocks */
+pre {
+    background: #050505 !important;
+    border: 1px solid #222 !important;
+    border-radius: 8px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── SESSION STATE ─────────────────────────────────────────────────────────────
+if "messages" not in st.session_state: st.session_state.messages = []
+if "api_messages" not in st.session_state: st.session_state.api_messages = []
+
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("""
+        <div style="padding: 10px 0 20px;">
+            <h2 style="color:#4FACFE; margin-bottom:0;">✦ AskDeva</h2>
+            <p style="font-size:0.8rem; color:#666;">Vision Model: <b>DevaCore</b></p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("＋ New Conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.api_messages = []
+        st.rerun()
+
+    st.markdown("---")
+    
+    st.markdown("### 📎 Upload Media")
+    uploaded = st.file_uploader("img", type=["png","jpg","jpeg","webp"], label_visibility="collapsed")
+    if uploaded:
+        st.image(Image.open(uploaded), use_column_width=True)
+
+    st.markdown("---")
+    status_icon = "🟢" if API_KEY else "🔴"
+    st.markdown(f"<div style='font-size:0.75rem; color:#888;'>Status: {status_icon} Connected</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:0.75rem; color:#888;'>Powered by {MODEL}</div>", unsafe_allow_html=True)
+
+# ── MESSAGE RENDERING ─────────────────────────────────────────────────────────
+def render_message(role, content, img_b64=None):
+    if role == "user":
+        img_tag = f'<img src="{img_b64}" style="width:100%; border-radius:12px; margin-bottom:12px;"/>' if img_b64 else ""
+        st.markdown(f"""
+        <div class="msg-row" style="flex-direction: row-reverse;">
+            <div class="av-wrap av-user">U</div>
+            <div class="user-content msg-content">{img_tag}{content}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="msg-row">
+            <div class="av-wrap av-bot">D</div>
+            <div class="bot-content msg-content">{content}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ── MAIN VIEW ────────────────────────────────────────────────────────────────
+st.markdown('<div class="chat-area">', unsafe_allow_html=True)
+
+if not st.session_state.messages:
+    # Splash Screen
+    st.markdown("""
+    <div style="text-align:center; padding-top: 15vh;">
+        <h1 style="font-size: 2.8rem; letter-spacing: -1px;">Shine light on your ideas.</h1>
+        <p style="color:#777; font-size: 1.1rem;">How can <b>Deva</b> help you today?</p>
+        <div class="suggestion-grid">
+            <div class="sug-card"><b>🎨 Creative Vision</b><br>Describe this scene and suggest improvements.</div>
+            <div class="sug-card"><b>📜 OCR Extract</b><br>Turn this document photo into clean text.</div>
+            <div class="sug-card"><b>🐍 Debug Code</b><br>Analyze my screenshot to find the logic error.</div>
+            <div class="sug-card"><b>📊 Data Insights</b><br>Explain the trends shown in this chart.</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    for msg in st.session_state.messages:
+        render_message(msg["role"], msg["content"], msg.get("img_b64"))
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ── CHAT LOGIC ────────────────────────────────────────────────────────────────
+if prompt := st.chat_input("Message AskDeva..."):
+    
+    if not API_KEY:
+        st.error("API Key Missing.")
+        st.stop()
+
+    img_b64 = None
+    if uploaded:
+        uploaded.seek(0)
+        img_b64 = pil_to_base64_url(Image.open(uploaded))
+
+    # User Step
+    st.session_state.messages.append({"role": "user", "content": prompt, "img_b64": img_b64})
+    api_msg = image_message("user", prompt, img_b64) if img_b64 else text_message("user", prompt)
+    st.session_state.api_messages.append(api_msg)
+    
+    st.rerun()
+
+# Assistant Streaming Step
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    with st.empty():
+        full_response = ""
+        # Hardcoded generation params for simplicity
+        for chunk in chat_stream(st.session_state.api_messages, max_tokens=2048, temperature=0.7):
+            full_response += chunk
+            st.markdown(f"""
+            <div class="msg-row">
+                <div class="av-wrap av-bot">D</div>
+                <div class="bot-content msg-content">{full_response}<span style="color:#4FACFE;"> ▌</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        st.session_state.api_messages.append({"role": "assistant", "content": full_response})
+        st.rerun()
+
+
+# python -m streamlit run app.py
