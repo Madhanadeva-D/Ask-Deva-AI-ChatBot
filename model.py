@@ -1,5 +1,5 @@
 """
-model.py — AshDex API layer
+model.py — AsKDeX API layer
 Uses requests + json.dumps via OpenRouter.
 API key is read fresh on every call, not cached at import time.
 """
@@ -33,12 +33,12 @@ def get_api_key_display() -> str:
 
 _load_env()
 SITE_URL  = os.getenv("YOUR_SITE_URL",  "http://localhost:8501")
-SITE_NAME = os.getenv("YOUR_SITE_NAME", "AshDex")
+SITE_NAME = os.getenv("YOUR_SITE_NAME", "AsKDeX")
 
 MODEL   = "qwen/qwen3-vl-235b-a22b-thinking"
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-SYSTEM_PROMPT = """You are AshDex, a powerful multimodal AI assistant built by Madhanadeva D.
+SYSTEM_PROMPT = """You are AsKDeX, a powerful multimodal AI assistant built by Madhanadeva D.
 If anyone asks who developed you or who created you, you must answer "Madhanadeva D.".
 You can analyze images, charts, diagrams, screenshots, and documents.
 Solve STEM and math problems with step-by-step reasoning.

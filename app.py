@@ -1,5 +1,5 @@
 """
-app.py — AshDex: Qwen3-VL ChatGPT-style UI
+app.py — AsKDeX: Qwen3-VL ChatGPT-style UI
 Run: python -m streamlit run app.py
 """
 
@@ -11,7 +11,7 @@ from model import (
 )
 
 st.set_page_config(
-    page_title="AshDex AI",
+    page_title="AsKDeX AI",
     page_icon="✦",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -227,7 +227,7 @@ _api_key = get_api_key_display()
 with st.sidebar:
     st.markdown("""
         <div style="padding:0 0 10px;">
-            <h2 style="color:#1D8CF8;margin-bottom:2px;font-size:2rem;">✦ AshDex</h2>
+            <h2 style="color:#1D8CF8;margin-bottom:2px;font-size:2rem;">✦ AsKDeX</h2>
             <p style="font-size:0.8rem;color:#3A5070;margin:0;">Qwen3-VL · 235B A22B Thinking</p>
         </div>
     """, unsafe_allow_html=True)
@@ -289,7 +289,7 @@ st.markdown('<div class="chat-area">', unsafe_allow_html=True)
 if not st.session_state.messages:
     st.markdown("""
     <div class="welcome-wrap">
-        <div class="welcome-logo">✦ AshDex</div>
+        <div class="welcome-logo">✦ AsKDeX</div>
         <p class="welcome-sub">What can I help you with?</p>
         <div class="suggestion-grid">
             <div class="sug-card"><b>🎨 Creative Vision</b>Describe a scene and suggest improvements.</div>
